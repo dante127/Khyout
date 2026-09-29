@@ -21,6 +21,9 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.IsActive).HasColumnName("is_active").IsRequired();
         builder.Property(u => u.CreatedAt).HasColumnName("created_at").IsRequired();
         builder.Property(u => u.UpdatedAt).HasColumnName("updated_at").IsRequired();
+        builder.Property(u => u.TelegramChatId).HasColumnName("telegram_chat_id").HasMaxLength(32);
+        builder.Property(u => u.TelegramLinkCode).HasColumnName("telegram_link_code").HasMaxLength(64);
+        builder.Property(u => u.TelegramLinkCodeExpiresAt).HasColumnName("telegram_link_code_expires_at");
 
         builder.HasIndex(u => u.PhoneNumber).IsUnique().HasDatabaseName("ux_users_phone_number");
         builder.HasIndex(u => u.CompanyId).HasDatabaseName("ix_users_company_id");

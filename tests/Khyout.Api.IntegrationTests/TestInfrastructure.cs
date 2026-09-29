@@ -85,6 +85,10 @@ public sealed class TestAppFactory : WebApplicationFactory<Program>
     public TestClock Clock { get; } = new();
 
     private readonly string _dbPath = Path.Combine(Path.GetTempPath(), $"khyout-it-{Guid.NewGuid():N}.db");
+
+    /// <summary>Per-factory media storage root (image pipeline writes here).</summary>
+    public string MediaRoot { get; } = Path.Combine(Path.GetTempPath(), $"khyout-media-{Guid.NewGuid():N}");
+
     private bool _initialized;
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -97,6 +101,10 @@ public sealed class TestAppFactory : WebApplicationFactory<Program>
                 ["Database:UseSqlite"] = "true",
                 ["ConnectionStrings:Sqlite"] = $"Data Source={_dbPath}",
                 ["BackgroundJobs:Enabled"] = "false",
+                ["RateLimiting:OtpPermitLimit"] = "1000",
+                ["Storage:MediaRoot"] = MediaRoot,
+                ["Telegram:BotUsername"] = "khyout_test_bot",
+                ["Telegram:WebhookSecret"] = "test-secret",
                 ["RateLimiting:OtpPermitLimit"] = "1000",
                 ["Auth:Jwt:Issuer"] = "khyout-tests",
                 ["Auth:Jwt:Audience"] = "khyout-tests",
@@ -258,6 +266,46 @@ public static class TestApi
         }
 
         throw new InvalidOperationException($"Pending company '{companyName}' not found.");
+    }
+
+    public static async Task<Guid> CreateActiveProductAsync(
+        TestAppFactory factory,
+        HttpClient supplierClient,
+        string title = "Active product")
+    {
+        var categoryId = (await SendAsync(supplierClient, HttpMethod.Get, "/api/v1/categories"))
+            .Data!.Value[0].GetProperty("id").GetGuid();
+
+        object Body(string status) => new
+        {
+            categoryId,
+            title,
+            description = (string?)null,
+            moq = 10m,
+            unitOfMeasure = "Kg",
+            indicativePrice = (decimal?)null,
+            currency = (string?)null,
+            gsm = 160,
+            gsmTolerancePct = 5,
+            weaveStructure = "Plain",
+            widthCm = 150,
+            colorFamily = (string?)null,
+            weightPerMeterG = (int?)null,
+            careNotes = (string?)null,
+            composition = new object[] { new { fiberType = "Cotton", percentage = 100m } },
+            status
+        };
+
+        var (createStatus, createData, createError) = await SendAsync(
+            supplierClient, HttpMethod.Post, "/api/v1/products", Body("Draft"));
+        createStatus.Should().Be(HttpStatusCode.OK, "{0}", createError?.ToString());
+        var productId = createData!.Value.GetProperty("id").GetGuid();
+
+        var (updateStatus, _, updateError) = await SendAsync(
+            supplierClient, HttpMethod.Put, $"/api/v1/products/{productId}", Body("Active"));
+        updateStatus.Should().Be(HttpStatusCode.OK, "{0}", updateError?.ToString());
+
+        return productId;
     }
 
     public static async Task VerifyCompanyAsync(HttpClient adminClient, Guid companyId)

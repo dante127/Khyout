@@ -2,6 +2,7 @@ using System.Reflection;
 using FluentValidation;
 using Khyout.Application.Common.Cqrs;
 using Khyout.Application.Common.Security;
+using Khyout.Application.Features.Telegram;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Khyout.Application;
@@ -15,6 +16,7 @@ public static class DependencyInjection
         services.AddValidatorsFromAssembly(assembly);
         services.AddScoped<OtpVerifier>();
         services.AddScoped<ISender, Sender>();
+        services.AddScoped<TelegramUpdateHandler>();
 
         foreach (var type in assembly.GetTypes().Where(t => t is { IsAbstract: false, IsInterface: false }))
         {

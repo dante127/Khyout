@@ -1,0 +1,22 @@
+# ---- build ----
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+
+COPY Directory.Build.props ./
+COPY Khyout.sln ./
+COPY src/Khyout.Domain/Khyout.Domain.csproj src/Khyout.Domain/
+COPY src/Khyout.Application/Khyout.Application.csproj src/Khyout.Application/
+COPY src/Khyout.Infrastructure/Khyout.Infrastructure.csproj src/Khyout.Infrastructure/
+COPY src/Khyout.Api/Khyout.Api.csproj src/Khyout.Api/
+RUN dotnet restore src/Khyout.Api/Khyout.Api.csproj
+
+COPY src/ src/
+RUN dotnet publish src/Khyout.Api/Khyout.Api.csproj -c Release -o /app/publish --no-restore
+
+# ---- runtime ----
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
+WORKDIR /app
+COPY --from=build /app/publish .
+ENV ASPNETCORE_URLS=http://+:8080
+EXPOSE 8080
+ENTRYPOINT ["dotnet", "Khyout.Api.dll"]

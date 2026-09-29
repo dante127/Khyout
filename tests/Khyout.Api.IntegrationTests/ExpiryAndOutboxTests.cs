@@ -1,7 +1,9 @@
 using System.Net;
+using System.Text.Json;
 using FluentAssertions;
 using Khyout.Domain.Enums;
 using Khyout.Infrastructure.BackgroundJobs;
+using Khyout.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -46,7 +48,7 @@ public class ExpiryTests : IClassFixture<TestAppFactory>
         bidStatus.Should().Be(HttpStatusCode.OK, "bid should be accepted ({0})", bidError?.ToString());
         var quoteId = bidData!.Value.GetProperty("quotationId").GetGuid();
 
-        // Advance past validity: before the worker runs, accepting must already fail with
+        // Advance past validity: BEFORE the worker runs, accepting must already fail with
         // quotation_expired (accept-time re-validation).
         _factory.Clock.Advance(TimeSpan.FromMinutes(2));
         var (acceptStatus, _, acceptError) = await TestApi.SendAsync(buyerClient, HttpMethod.Post, $"/api/v1/quotations/{quoteId}/accept");
@@ -87,8 +89,12 @@ public class OutboxTests : IClassFixture<TestAppFactory>
     }
 
     [Fact]
-    public async Task Outbox_dispatcher_marks_sent_and_retries_on_failure()
+    public async Task Outbox_dispatch_resolves_linked_supplier_and_retries_on_failure()
     {
+        // Verified supplier with an active product in the seeded category + linked chat id.
+        var supplier = await TestApi.VerifiedSupplierClientAsync(_factory, "+963900500004", "Outbox Supplier", "homs");
+        var productId = await TestApi.CreateActiveProductAsync(_factory, supplier);
+
         var (buyerClient, _) = await TestApi.VerifiedBuyerAsync(_factory, "+963900500003", "Outbox Buyers", "damascus");
 
         var categoryId = (await TestApi.SendAsync(buyerClient, HttpMethod.Get, "/api/v1/categories"))
@@ -106,6 +112,14 @@ public class OutboxTests : IClassFixture<TestAppFactory>
                 closingDate = "2026-12-15T00:00:00+00:00"
             });
 
+        await _factory.WithDbAsync(async db =>
+        {
+            var user = await db.Users.FirstAsync(u => u.PhoneNumber == "+963900500004");
+            user.SetTelegramChatId("963900004", _factory.Clock.UtcNow);
+            await db.SaveChangesAsync();
+            return true;
+        });
+
         // Failure pass: attempts increment, message stays Pending.
         _factory.Telegram.FailAll = true;
         using (var scope = _factory.Services.CreateScope())
@@ -113,32 +127,33 @@ public class OutboxTests : IClassFixture<TestAppFactory>
             await scope.ServiceProvider.GetRequiredService<OutboxDispatcher>().ProcessAsync();
         }
 
-        _factory.Telegram.FailAll = false;
-
-        var (attempts, stillPending) = await _factory.WithDbAsync(async db =>
+        var (attempts, stillPending, sentYet) = await _factory.WithDbAsync(async db =>
         {
             var message = await db.OutboxMessages
                 .Where(m => m.Type == OutboxMessageType.RfqCreated)
                 .OrderByDescending(m => m.CreatedAt)
                 .FirstAsync();
-            return (message.Attempts, message.Status == OutboxMessageStatus.Pending);
+            return (message.Attempts, message.Status == OutboxMessageStatus.Pending, message.Status == OutboxMessageStatus.Sent);
         });
 
         attempts.Should().BeGreaterThanOrEqualTo((short)1);
-        stillPending.Should().BeTrue("the message must not be dropped on a failed delivery");
+        stillPending.Should().BeTrue("a failed delivery must not drop the message");
+        sentYet.Should().BeFalse();
 
         // Move past the retry backoff and deliver.
         _factory.Clock.Advance(TimeSpan.FromMinutes(1));
+        _factory.Telegram.FailAll = false;
         using (var scope = _factory.Services.CreateScope())
         {
             await scope.ServiceProvider.GetRequiredService<OutboxDispatcher>().ProcessAsync();
         }
 
-        var sent = await _factory.WithDbAsync(async db =>
+        var delivered = await _factory.WithDbAsync(async db =>
             await db.OutboxMessages.AnyAsync(m =>
                 m.Type == OutboxMessageType.RfqCreated && m.Status == OutboxMessageStatus.Sent));
+        delivered.Should().BeTrue();
 
-        sent.Should().BeTrue();
-        _factory.Telegram.Sent.Should().NotBeEmpty();
+        _factory.Telegram.Sent.Should().Contain(s => s.Target == "963900004");
+        _factory.Telegram.Sent[0].Text.Should().Contain("Outbox RFQ");
     }
 }

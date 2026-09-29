@@ -1,0 +1,59 @@
+name: khyout
+
+services:
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: khyout
+      POSTGRES_USER: khyout
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U khyout -d khyout"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=khyout;Username=khyout;Password=${POSTGRES_PASSWORD}
+      Auth__Jwt__Issuer: khyout
+      Auth__Jwt__Audience: khyout
+      Auth__Jwt__SigningKey: ${AUTH__JWT__SIGNING_KEY:?set in .env}
+      BackgroundJobs__Enabled: "true"
+      Storage__MediaRoot: /app/media
+      Telegram__Enabled: ${TELEGRAM__ENABLED:-false}
+      Telegram__BotToken: ${TELEGRAM__BOT_TOKEN:-}
+      Telegram__BotUsername: ${TELEGRAM__BOT_USERNAME:-}
+      Telegram__WebhookSecret: ${TELEGRAM__WEBHOOK_SECRET:-}
+      AdminBootstrap__PhoneNumber: ${ADMIN_BOOTSTRAP__PHONE_NUMBER:-}
+    volumes:
+      - media:/app/media
+    expose:
+      - "8080"
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/khyout.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+
+volumes:
+  pgdata:
+  media:

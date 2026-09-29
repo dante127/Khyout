@@ -21,6 +21,15 @@ public class User
 
     public Company? Company { get; private set; }
     public bool IsActive { get; private set; }
+
+    /// <summary>Telegram chat id once the account is linked (null until then).</summary>
+    public string? TelegramChatId { get; private set; }
+
+    /// <summary>One-time code for the Telegram deep-link flow.</summary>
+    public string? TelegramLinkCode { get; private set; }
+
+    public DateTimeOffset? TelegramLinkCodeExpiresAt { get; private set; }
+
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
 
@@ -76,4 +85,32 @@ public class User
         Role = UserRole.Admin;
         UpdatedAt = now;
     }
+
+    /// <summary>Stores a one-time code used to link a Telegram account (15-minute validity).</summary>
+    public void BeginTelegramLink(string code, DateTimeOffset now, TimeSpan ttl)
+    {
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            throw new DomainRuleException("telegram_code_required", "Link code is required.");
+        }
+
+        TelegramLinkCode = code;
+        TelegramLinkCodeExpiresAt = now.Add(ttl);
+        UpdatedAt = now;
+    }
+
+    public void SetTelegramChatId(string chatId, DateTimeOffset now)
+    {
+        if (string.IsNullOrWhiteSpace(chatId))
+        {
+            throw new DomainRuleException("telegram_chat_required", "Chat id is required.");
+        }
+
+        TelegramChatId = chatId.Trim();
+        TelegramLinkCode = null;
+        TelegramLinkCodeExpiresAt = null;
+        UpdatedAt = now;
+    }
+
+    public bool IsTelegramLinked => !string.IsNullOrWhiteSpace(TelegramChatId);
 }

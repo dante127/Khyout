@@ -11,6 +11,8 @@ using Khyout.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.StaticFiles;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
@@ -114,6 +116,22 @@ if (string.IsNullOrWhiteSpace(app.Configuration["Auth:Jwt:SigningKey"]))
 }
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
+
+// Media library: uploaded WebP images served with immutable caching.
+var mediaRoot = app.Configuration["Storage:MediaRoot"];
+if (string.IsNullOrWhiteSpace(mediaRoot))
+{
+    mediaRoot = Path.Combine(app.Environment.ContentRootPath, "media");
+}
+
+Directory.CreateDirectory(mediaRoot);
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(mediaRoot),
+    RequestPath = "/media",
+    OnPrepareResponse = context =>
+        context.Context.Response.Headers.CacheControl = "public, max-age=31536000, immutable"
+});
 
 if (app.Environment.IsDevelopment())
 {

@@ -32,7 +32,11 @@ public sealed record ProductSummaryDto(
 
 public sealed record FiberDto(string FiberType, decimal Percentage);
 
-public sealed record ProductImageDto(Guid Id, string StoragePath, int WidthPx, int HeightPx, short SortOrder);
+public sealed record ProductImageDto(Guid Id, string StoragePath, int WidthPx, int HeightPx, short SortOrder)
+{
+    public static ProductImageDto From(ProductImage image) =>
+        new(image.Id, image.StoragePath, image.WidthPx, image.HeightPx, image.SortOrder);
+}
 
 public sealed record ProductDetailDto(
     Guid Id,

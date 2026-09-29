@@ -1,12 +1,15 @@
 using Khyout.Application.Abstractions;
 using Khyout.Infrastructure.BackgroundJobs;
 using Khyout.Infrastructure.Identity;
+using Khyout.Infrastructure.Media;
 using Khyout.Infrastructure.Messaging.Sms;
 using Khyout.Infrastructure.Messaging.Telegram;
 using Khyout.Infrastructure.Persistence;
+using Khyout.Infrastructure.Storage;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace Khyout.Infrastructure;
 
@@ -51,7 +54,25 @@ public static class DependencyInjection
         services.AddSingleton<IDateTimeProvider, SystemClock>();
         services.AddScoped<ITokenService, JwtTokenService>();
         services.AddSingleton<ISmsSender, LoggingSmsSender>();
-        services.AddSingleton<ITelegramSender, LoggingTelegramSender>();
+
+        // Media pipeline: SkiaSharp transcode + local storage (root from Storage:MediaRoot).
+        services.AddSingleton<IImageProcessor, SkiaSharpProcessor>();
+        services.AddSingleton<IFileStorage>(sp =>
+        {
+            var configuration = sp.GetRequiredService<IConfiguration>();
+            var environment = sp.GetRequiredService<IHostEnvironment>();
+            var mediaRoot = configuration["Storage:MediaRoot"];
+            if (string.IsNullOrWhiteSpace(mediaRoot))
+            {
+                mediaRoot = Path.Combine(environment.ContentRootPath, "media");
+            }
+
+            return new LocalFileStorage(mediaRoot);
+        });
+
+        // Telegram Bot API sender (falls back to logging when disabled/unconfigured).
+        services.AddHttpClient<ITelegramSender, TelegramBotSender>();
+        services.AddSingleton<ITelegramOptions, TelegramOptions>();
 
         // Processors are plain scoped services (tests invoke them directly);
         // the hosted workers wrap them in periodic timers.

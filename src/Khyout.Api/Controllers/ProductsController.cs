@@ -36,4 +36,27 @@ public sealed class ProductsController(ISender sender) : ControllerBase
         UpdateProductCommand command,
         CancellationToken cancellationToken)
         => Ok(ApiResponse.Ok(await sender.Send(command with { ProductId = id }, cancellationToken)));
+
+    [Authorize(Policy = "VerifiedSupplier")]
+    [HttpPost("{id:guid}/images")]
+    [RequestSizeLimit(6 * 1024 * 1024)]
+    public async Task<ActionResult<ApiResponse<ProductImageDto>>> UploadImage(
+        Guid id,
+        IFormFile file,
+        CancellationToken cancellationToken)
+    {
+        if (file is null || file.Length == 0)
+        {
+            return BadRequest(new ApiResponse<object?>(false, null, new ApiError("upload_empty", "No file was uploaded.")));
+        }
+
+        using var buffer = new MemoryStream();
+        await file.CopyToAsync(buffer, cancellationToken);
+
+        var result = await sender.Send(
+            new UploadProductImageCommand(id, buffer.ToArray(), file.ContentType, file.FileName),
+            cancellationToken);
+
+        return Ok(ApiResponse.Ok(result));
+    }
 }
