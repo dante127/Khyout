@@ -1,0 +1,16 @@
+# Build-context hygiene for the API image
+.git
+.github
+.vs
+.idea
+.openclaw
+**/bin/
+**/obj/
+**/node_modules/
+**/dist/
+client/
+tests/
+docs/
+deploy/.env
+**/*.db
+**/media/

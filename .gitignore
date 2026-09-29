@@ -26,3 +26,7 @@ Thumbs.db
 ## Node (client — later phases)
 node_modules/
 dist/
+
+# Local deployment secrets
+deploy/.env
+deploy/docker-compose.smoke.yml

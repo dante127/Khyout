@@ -91,6 +91,8 @@ export interface ProductSearchParams {
   pageSize?: number;
 }
 
+export type ProductStatusValue = 'Draft' | 'Active' | 'Archived';
+
 export interface CreateProductInput {
   categoryId: string;
   title: string;
@@ -108,6 +110,9 @@ export interface CreateProductInput {
   careNotes?: string | null;
   composition: FiberSpec[];
 }
+
+/** PUT requires the full payload plus the desired status (publish = status Active). */
+export type UpdateProductInput = CreateProductInput & { status: ProductStatusValue };
 
 function toQueryString(params: ProductSearchParams): string {
   const query = new URLSearchParams();
@@ -142,7 +147,7 @@ export function createProduct(input: CreateProductInput): Promise<ProductDetail>
   return request<ProductDetail>('/api/v1/products', { method: 'POST', body: input });
 }
 
-export function updateProduct(id: string, input: CreateProductInput): Promise<ProductDetail> {
+export function updateProduct(id: string, input: UpdateProductInput): Promise<ProductDetail> {
   return request<ProductDetail>(`/api/v1/products/${id}`, { method: 'PUT', body: input });
 }
 
