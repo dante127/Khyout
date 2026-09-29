@@ -1,5 +1,8 @@
+import { useEffect } from 'react';
 import type { ReactElement } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { flushOutbox } from './offline/flush';
+import { useOnline } from './offline/useOnline';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import AppShell from './app/AppShell';
 import LoginPage from './pages/LoginPage';
@@ -18,6 +21,14 @@ function RequireAuth({ children }: { children: ReactElement }) {
 }
 
 export default function App() {
+  const online = useOnline();
+
+  useEffect(() => {
+    if (online) {
+      void flushOutbox().catch(() => undefined);
+    }
+  }, [online]);
+
   return (
     <AuthProvider>
       <BrowserRouter>

@@ -79,5 +79,8 @@ Copy `.env.example` to `.env.local` to override. `.env.local` is git-ignored.
   my-RFQs list with status filters, role-aware RFQ detail with the full
   quotation flow (blind bids: buyer sees all bids with accept/reject; supplier
   submits, tracks and withdraws own bid), quotation action API modules.
-- **4b-2c (next):** samples screens + typed module, offline flush + Workbox
-  background sync.
+- **4b-2c (this milestone):** samples screens (list + supplier lifecycle
+  actions + buyer sample requests from product pages), offline outbox flush
+  (replay on reconnect, permanent-rejection handling), installable PWA
+  (Workbox service worker + manifest + icons).
+- **Next:** interactive browser smoke test; CI already runs build + tests.

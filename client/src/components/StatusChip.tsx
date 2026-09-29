@@ -25,6 +25,23 @@ export function quotationTone(status: string): Tone {
   }
 }
 
+export function sampleTone(status: string): Tone {
+  switch (status) {
+    case 'Requested':
+      return 'info';
+    case 'Approved':
+      return 'success';
+    case 'Shipped':
+      return 'warn';
+    case 'Received':
+      return 'success';
+    case 'Rejected':
+      return 'danger';
+    default:
+      return 'muted';
+  }
+}
+
 export default function StatusChip({ label, tone = 'muted' }: { label: string; tone?: Tone }) {
   return (
     <span className={`shrink-0 rounded-full border px-2.5 py-0.5 text-[11px] ${toneClasses[tone]}`}>

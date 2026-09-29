@@ -7,6 +7,8 @@ import * as rfqsApi from '../../lib/api/rfqs';
 import * as catalogApi from '../../lib/api/catalog';
 import type { ProductDetail } from '../../lib/api/catalog';
 import type { RfqDetail } from '../../lib/api/rfqs';
+import { newOutboxItem, outbox } from '../../offline/outbox';
+import { useOnline } from '../../offline/useOnline';
 
 vi.mock('../../lib/api/rfqs', () => ({
   createRfq: vi.fn(),
@@ -30,8 +32,25 @@ vi.mock('../../lib/api/catalog', () => ({
   uploadProductImage: vi.fn(),
 }));
 
+vi.mock('../../offline/useOnline', () => ({ useOnline: vi.fn() }));
+
+vi.mock('../../offline/outbox', () => ({
+  newOutboxItem: vi.fn((method: string, url: string, body?: unknown) => ({
+    id: 'queued-1',
+    method,
+    url,
+    body,
+    createdAt: '2026-09-29T00:00:00Z',
+    attempts: 0,
+  })),
+  outbox: { enqueue: vi.fn() },
+}));
+
 const mockedRfqs = vi.mocked(rfqsApi);
 const mockedCatalog = vi.mocked(catalogApi);
+const mockedOnline = vi.mocked(useOnline);
+const mockedEnqueue = vi.mocked(outbox.enqueue);
+const mockedNewOutboxItem = vi.mocked(newOutboxItem);
 
 const productFixture: ProductDetail = {
   id: 'p1',
@@ -105,6 +124,7 @@ function renderCreate(initial = '/rfqs/new?productId=p1') {
 describe('RfqCreatePage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockedOnline.mockReturnValue(true);
     mockedCatalog.getCategoryTree.mockResolvedValue(tree);
     mockedCatalog.getProduct.mockResolvedValue(productFixture);
   });
@@ -144,5 +164,29 @@ describe('RfqCreatePage', () => {
     await screen.findByRole('option', { name: 'أقمشة قطنية' });
 
     expect(screen.getByRole('button', { name: 'نشر الطلب' })).toBeDisabled();
+  });
+
+  it('queues the RFQ locally when offline', async () => {
+    mockedOnline.mockReturnValue(false);
+    renderCreate('/rfqs/new');
+
+    await screen.findByRole('option', { name: 'أقمشة قطنية' });
+
+    await userEvent.type(screen.getByLabelText('عنوان الطلب'), 'قطن شتوي');
+    fireEvent.change(screen.getByLabelText('الفئة'), { target: { value: 'cat-1' } });
+    fireEvent.change(screen.getByLabelText('الكمية'), { target: { value: '100' } });
+    fireEvent.change(screen.getByLabelText('تاريخ التسليم المطلوب'), { target: { value: '2026-12-01' } });
+    fireEvent.change(screen.getByLabelText('موعد إغلاق العروض'), { target: { value: '2026-11-20T12:00' } });
+
+    await userEvent.click(screen.getByRole('button', { name: 'حفظ الطلب للإرسال لاحقاً' }));
+
+    expect(mockedRfqs.createRfq).not.toHaveBeenCalled();
+    expect(mockedNewOutboxItem).toHaveBeenCalledWith(
+      'POST',
+      '/api/v1/rfqs',
+      expect.objectContaining({ title: 'قطن شتوي', quantityNeeded: 100 }),
+    );
+    expect(mockedEnqueue).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText(/تم حفظ الطلب على جهازك/)).toBeInTheDocument();
   });
 });

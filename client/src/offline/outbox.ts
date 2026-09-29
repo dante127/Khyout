@@ -59,12 +59,5 @@ export const outbox = {
   },
 };
 
-/**
- * Phase 4b-2 stub: replays queued mutations in order when connectivity
- * returns (with backoff and permanent-failure handling), wired to the
- * `online` event and Workbox background sync. The queue itself above is
- * complete and testable; the flush wiring is intentionally not active yet.
- */
-export async function flushOutboxStub(): Promise<number> {
-  return 0;
-}
+// Replay of queued mutations lives in ./flush.ts (flushOutbox), wired to the
+// `online` event in App. The queue above is complete and testable.

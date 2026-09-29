@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { ChangeEvent } from 'react';
+import type { ChangeEvent, FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { getProduct, uploadProductImage } from '../lib/api/catalog';
 import type { ProductDetail } from '../lib/api/catalog';
 import { ApiError } from '../lib/api/client';
+import { createSampleRequest } from '../lib/api/samples';
 import { fiberLabel, formatDate, formatMoney, formatNumber, mediaUrl, unitLabel, weaveLabel } from '../lib/format';
 import { decodeJwtClaims } from '../lib/jwt';
 import { tokenStore } from '../lib/storage';
+
+const inputClass =
+  'w-full rounded-xl border border-graphite-700 bg-graphite-950 px-3.5 py-2.5 text-sm text-graphite-50 outline-none placeholder:text-graphite-600 focus:border-bronze-500 focus:ring-2 focus:ring-bronze-500/40';
 
 function BackLink() {
   return (
@@ -38,6 +42,13 @@ export default function ProductDetailPage() {
   const [activeImage, setActiveImage] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const [sampleOpen, setSampleOpen] = useState(false);
+  const [sampleQty, setSampleQty] = useState('');
+  const [sampleCity, setSampleCity] = useState('');
+  const [sampleBusy, setSampleBusy] = useState(false);
+  const [sampleDone, setSampleDone] = useState(false);
+  const [sampleError, setSampleError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!productId) return;
@@ -85,6 +96,26 @@ export default function ProductDetailPage() {
       setUploadError(cause instanceof ApiError ? cause.message : 'تعذّر رفع الصورة');
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleSampleRequest = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!product) return;
+    setSampleBusy(true);
+    setSampleError(null);
+    try {
+      await createSampleRequest({
+        productId: product.id,
+        quantity: Number(sampleQty),
+        deliveryCity: sampleCity.trim() || null,
+      });
+      setSampleDone(true);
+      setSampleOpen(false);
+    } catch (cause) {
+      setSampleError(cause instanceof ApiError ? cause.message : 'تعذّر إرسال طلب العينة');
+    } finally {
+      setSampleBusy(false);
     }
   };
 
@@ -245,14 +276,81 @@ export default function ProductDetailPage() {
           ) : null}
         </div>
       ) : claims?.role === 'Buyer' ? (
-        <button
-          type="button"
-          disabled={product.status !== 'Active'}
-          onClick={() => navigate(`/rfqs/new?productId=${product.id}`)}
-          className="w-full rounded-xl bg-bronze-500 py-3.5 text-sm font-bold text-graphite-950 transition hover:bg-bronze-400 disabled:opacity-50"
-        >
-          طلب عرض سعر
-        </button>
+        <div className="space-y-3">
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={product.status !== 'Active'}
+              onClick={() => navigate(`/rfqs/new?productId=${product.id}`)}
+              className="flex-1 rounded-xl bg-bronze-500 py-3.5 text-sm font-bold text-graphite-950 transition hover:bg-bronze-400 disabled:opacity-50"
+            >
+              طلب عرض سعر
+            </button>
+            <button
+              type="button"
+              disabled={product.status !== 'Active'}
+              onClick={() => setSampleOpen((open) => !open)}
+              className="flex-1 rounded-xl border border-graphite-600 py-3.5 text-sm font-semibold text-graphite-200 transition hover:border-bronze-600/60 disabled:opacity-50"
+            >
+              طلب عينة
+            </button>
+          </div>
+
+          {sampleDone ? (
+            <p className="rounded-xl border border-emerald-400/40 bg-emerald-500/10 px-3.5 py-2.5 text-xs leading-5 text-emerald-300">
+              تم إرسال طلب العينة — تابع حالته من صفحة «العينات».
+            </p>
+          ) : sampleOpen ? (
+            <form
+              onSubmit={handleSampleRequest}
+              className="space-y-3 rounded-2xl border border-graphite-800 bg-graphite-900 p-4"
+            >
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="sample-qty" className="mb-1.5 block text-xs text-graphite-300">
+                    الكمية
+                  </label>
+                  <input
+                    id="sample-qty"
+                    type="number"
+                    inputMode="decimal"
+                    min={1}
+                    step="any"
+                    value={sampleQty}
+                    onChange={(event) => setSampleQty(event.target.value)}
+                    className={inputClass}
+                    required
+                  />
+                </div>
+                <div>
+                  <label htmlFor="sample-city" className="mb-1.5 block text-xs text-graphite-300">
+                    مدينة التسليم
+                  </label>
+                  <input
+                    id="sample-city"
+                    type="text"
+                    maxLength={100}
+                    value={sampleCity}
+                    onChange={(event) => setSampleCity(event.target.value)}
+                    className={inputClass}
+                  />
+                </div>
+              </div>
+              {sampleError ? (
+                <p role="alert" className="rounded-lg bg-red-500/10 px-3 py-2 text-xs leading-5 text-red-300">
+                  {sampleError}
+                </p>
+              ) : null}
+              <button
+                type="submit"
+                disabled={sampleBusy || !(Number(sampleQty) > 0)}
+                className="w-full rounded-xl bg-bronze-500 py-3 text-sm font-bold text-graphite-950 transition hover:bg-bronze-400 disabled:opacity-50"
+              >
+                {sampleBusy ? 'جارٍ الإرسال…' : 'إرسال طلب العينة'}
+              </button>
+            </form>
+          ) : null}
+        </div>
       ) : null}
     </section>
   );

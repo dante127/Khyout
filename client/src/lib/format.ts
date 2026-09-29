@@ -57,8 +57,20 @@ export function rfqStatusLabel(status: string): string {
   return rfqStatusLabels[status] ?? status;
 }
 
+const sampleStatusLabels: Record<string, string> = {
+  Requested: 'مطلوبة',
+  Approved: 'معتمدة',
+  Shipped: 'تم الشحن',
+  Received: 'تم الاستلام',
+  Rejected: 'مرفوضة',
+};
+
 export function quotationStatusLabel(status: string): string {
   return quotationStatusLabels[status] ?? status;
+}
+
+export function sampleStatusLabel(status: string): string {
+  return sampleStatusLabels[status] ?? status;
 }
 
 export function formatNumber(value: number, maxFractionDigits = 2): string {

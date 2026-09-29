@@ -6,6 +6,8 @@ import type { CategoryNode, ProductDetail, UnitOfMeasure } from '../lib/api/cata
 import { createRfq } from '../lib/api/rfqs';
 import { ApiError } from '../lib/api/client';
 import { unitLabel } from '../lib/format';
+import { newOutboxItem, outbox } from '../offline/outbox';
+import { useOnline } from '../offline/useOnline';
 
 const unitOptions: UnitOfMeasure[] = ['Meter', 'Kg', 'Roll', 'Yard'];
 
@@ -41,6 +43,9 @@ export default function RfqCreatePage() {
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [queued, setQueued] = useState(false);
+
+  const online = useOnline();
 
   useEffect(() => {
     getCategoryTree()
@@ -92,22 +97,53 @@ export default function RfqCreatePage() {
     event.preventDefault();
     setBusy(true);
     setError(null);
+
+    const payload = {
+      categoryId,
+      title: title.trim(),
+      description: description.trim() || null,
+      quantityNeeded: Number(quantity),
+      unitOfMeasure: unit,
+      targetDeliveryDate: targetDate,
+      closingDate: new Date(closingLocal).toISOString(),
+    };
+
+    if (!online) {
+      try {
+        await outbox.enqueue(newOutboxItem('POST', '/api/v1/rfqs', payload));
+        setQueued(true);
+      } catch {
+        setError('تعذّر حفظ الطلب محلياً — حاول مجدداً');
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+
     try {
-      const created = await createRfq({
-        categoryId,
-        title: title.trim(),
-        description: description.trim() || null,
-        quantityNeeded: Number(quantity),
-        unitOfMeasure: unit,
-        targetDeliveryDate: targetDate,
-        closingDate: new Date(closingLocal).toISOString(),
-      });
+      const created = await createRfq(payload);
       navigate(`/rfqs/${created.id}`, { replace: true });
     } catch (cause) {
       setError(cause instanceof ApiError ? cause.message : 'تعذّر إنشاء الطلب');
       setBusy(false);
     }
   };
+
+  if (queued) {
+    return (
+      <section className="space-y-4">
+        <h2 className="text-xl font-bold text-graphite-50">طلب عرض سعر جديد</h2>
+        <div className="rounded-2xl border border-bronze-600/40 bg-bronze-500/10 p-5 text-sm leading-6 text-bronze-200">
+          تم حفظ الطلب على جهازك — سيُرسل تلقائياً عند عودة الاتصال بالإنترنت.
+          <div className="mt-3">
+            <Link to="/rfqs" className="text-xs font-bold text-bronze-300 underline underline-offset-4">
+              العودة إلى طلباتي
+            </Link>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="space-y-4">
@@ -223,6 +259,12 @@ export default function RfqCreatePage() {
           />
         </Field>
 
+        {!online ? (
+          <p className="rounded-lg bg-bronze-700/20 px-3 py-2 text-xs leading-5 text-bronze-300">
+            أنت غير متصل — سيُحفظ الطلب محلياً ويُرسل تلقائياً عند عودة الاتصال.
+          </p>
+        ) : null}
+
         {error ? (
           <p role="alert" className="rounded-lg bg-red-500/10 px-3 py-2 text-xs leading-5 text-red-300">
             {error}
@@ -234,7 +276,7 @@ export default function RfqCreatePage() {
           disabled={busy || !canSubmit}
           className="w-full rounded-xl bg-bronze-500 py-3 text-sm font-bold text-graphite-950 transition hover:bg-bronze-400 disabled:opacity-50"
         >
-          {busy ? 'جارٍ الإرسال…' : 'نشر الطلب'}
+          {busy ? 'جارٍ الإرسال…' : online ? 'نشر الطلب' : 'حفظ الطلب للإرسال لاحقاً'}
         </button>
       </form>
     </section>
