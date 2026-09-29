@@ -7,7 +7,9 @@ designed for low-bandwidth, intermittent-connectivity environments.
 
 The full architecture specification lives in
 `docs/architecture/khyout-phase1-spec-2026-09-29.md` (Phase 1 deliverable).
-This repository currently implements **Phase 2 — Domain Modeling & Database Setup**.
+Phases 1–3 are implemented and tested. Phase 4 is in progress: 4a (media
+pipeline, Telegram integration, deployment scaffolding) is done, and the
+Phase 4b-1 offline-first PWA client scaffold now lives in `client/`.
 
 ## Solution layout
 
@@ -21,7 +23,8 @@ Khyout.sln
 ├─ tests/
 │  ├─ Khyout.Domain.Tests/    # domain invariant tests
 │  └─ Khyout.Api.IntegrationTests/
-└─ deploy/sql/                # generated, idempotent PostgreSQL DDL scripts
+├─ client/                    # offline-first PWA client (Vite + React + TS + Tailwind, RTL)
+└─ deploy/                    # PostgreSQL DDL scripts + Docker Compose deployment stack
 ```
 
 ## Requirements
@@ -49,6 +52,23 @@ dotnet run --project src/Khyout.Api
 - For anything beyond local development, set `Auth:Jwt:SigningKey` and `ConnectionStrings:Postgres` (env or appsettings).
 - Background workers (quote/RFQ expiry, outbox dispatcher) respect `BackgroundJobs:Enabled` (default on).
 
+## Web client (Phase 4b)
+
+The PWA client lives in `client/` — Vite + React + TypeScript + Tailwind CSS,
+Arabic RTL, offline-first (IndexedDB outbox scaffold + refresh-token rotation).
+
+```sh
+# terminal 1 — run the API on the port the client dev proxy expects
+dotnet run --project src/Khyout.Api --urls http://localhost:5000
+
+# terminal 2
+cd client
+npm install
+npm run dev   # http://localhost:5173 — /api is proxied to :5000
+```
+
+See `client/README.md` for env vars, scripts, and architecture notes.
+
 ## Database
 
 Provider selection is in `src/Khyout.Infrastructure/DependencyInjection.cs`:
@@ -72,11 +92,11 @@ dotnet ef migrations script --idempotent -p src/Khyout.Infrastructure -s src/Khy
 
 The initial schema script is checked in at `deploy/sql/001_initial_schema.sql`.
 
-## Admin bootstrap (planned — Phase 3)
+## Admin bootstrap (Phase 3)
 
-Admin users are intentionally not seeded through migrations. Plan: after a normal
-OTP login, the first user matching `AdminBootstrap:PhoneNumber` (configuration/env)
-is promoted to `Admin` on startup.
+Admin users are intentionally not seeded through migrations. At startup, the first
+user whose phone number matches `AdminBootstrap:PhoneNumber` (configuration/env)
+after a normal OTP login is promoted to `Admin`.
 
 ## Roadmap
 
@@ -85,4 +105,4 @@ is promoted to `Admin` on startup.
 | 1 | Architecture & technical specification | done |
 | 2 | Domain model, EF Core configuration, migrations, DDL | done |
 | 3 | Application layer (CQRS), REST API, background workers | done |
-| 4 | Telegram integration, offline-first PWA, deployment | next |
+| 4 | Telegram integration, offline-first PWA, deployment | in progress — 4a done, 4b-1 (client scaffold) done |
