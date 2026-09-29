@@ -34,6 +34,44 @@ public class FabricAttributes
         int? weightPerMeterG = null,
         string? careNotes = null)
     {
+        Validate(gsm, gsmTolerancePct, widthCm, weightPerMeterG);
+
+        return new FabricAttributes
+        {
+            Id = Guid.NewGuid(),
+            ProductId = productId,
+            Gsm = gsm,
+            GsmTolerancePct = gsmTolerancePct,
+            WeaveStructure = weaveStructure,
+            WidthCm = widthCm,
+            ColorFamily = colorFamily,
+            WeightPerMeterG = weightPerMeterG,
+            CareNotes = careNotes
+        };
+    }
+
+    public void Update(
+        int gsm,
+        int gsmTolerancePct,
+        WeaveStructure weaveStructure,
+        int widthCm,
+        string? colorFamily,
+        int? weightPerMeterG,
+        string? careNotes)
+    {
+        Validate(gsm, gsmTolerancePct, widthCm, weightPerMeterG);
+
+        Gsm = gsm;
+        GsmTolerancePct = gsmTolerancePct;
+        WeaveStructure = weaveStructure;
+        WidthCm = widthCm;
+        ColorFamily = colorFamily;
+        WeightPerMeterG = weightPerMeterG;
+        CareNotes = careNotes;
+    }
+
+    private static void Validate(int gsm, int gsmTolerancePct, int widthCm, int? weightPerMeterG)
+    {
         if (gsm <= 0)
         {
             throw new DomainRuleException("fabric_gsm_invalid", "GSM must be greater than zero.");
@@ -53,18 +91,5 @@ public class FabricAttributes
         {
             throw new DomainRuleException("fabric_weight_invalid", "Weight per linear meter must be greater than zero when provided.");
         }
-
-        return new FabricAttributes
-        {
-            Id = Guid.NewGuid(),
-            ProductId = productId,
-            Gsm = gsm,
-            GsmTolerancePct = gsmTolerancePct,
-            WeaveStructure = weaveStructure,
-            WidthCm = widthCm,
-            ColorFamily = colorFamily,
-            WeightPerMeterG = weightPerMeterG,
-            CareNotes = careNotes
-        };
     }
 }

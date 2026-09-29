@@ -118,6 +118,48 @@ public class RfqQuotation
         UpdatedAt = now;
     }
 
+    /// <summary>Updates a still-submitted bid (one active bid per supplier per RFQ).</summary>
+    public void Update(
+        decimal unitPrice,
+        string currency,
+        DateTimeOffset validUntil,
+        int leadTimeDays,
+        string? note,
+        DateTimeOffset now)
+    {
+        if (Status != QuotationStatus.Submitted)
+        {
+            throw new DomainRuleException("quotation_not_submitted", "Only submitted quotations can be updated.");
+        }
+
+        if (unitPrice <= 0)
+        {
+            throw new DomainRuleException("quotation_price_invalid", "Unit price must be greater than zero.");
+        }
+
+        if (string.IsNullOrWhiteSpace(currency))
+        {
+            throw new DomainRuleException("quotation_currency_required", "Currency is required.");
+        }
+
+        if (validUntil <= now)
+        {
+            throw new DomainRuleException("quotation_validity_invalid", "ValidUntil must be in the future.");
+        }
+
+        if (leadTimeDays < 0)
+        {
+            throw new DomainRuleException("quotation_lead_time_invalid", "Lead time cannot be negative.");
+        }
+
+        UnitPrice = unitPrice;
+        Currency = currency.Trim().ToUpperInvariant();
+        ValidUntil = validUntil;
+        LeadTimeDays = leadTimeDays;
+        Note = note;
+        UpdatedAt = now;
+    }
+
     private void EnsureSubmitted()
     {
         if (Status != QuotationStatus.Submitted)

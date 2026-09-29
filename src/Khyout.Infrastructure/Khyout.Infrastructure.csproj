@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Khyout.Domain\Khyout.Domain.csproj" />
+    <ProjectReference Include="..\Khyout.Application\Khyout.Application.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -16,6 +17,8 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.12" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.12" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.12" />
+    <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.23.0" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
   </ItemGroup>
 

@@ -70,4 +70,10 @@ public class User
         IsActive = false;
         UpdatedAt = now;
     }
+
+    public void PromoteToAdmin(DateTimeOffset now)
+    {
+        Role = UserRole.Admin;
+        UpdatedAt = now;
+    }
 }

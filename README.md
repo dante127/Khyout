@@ -37,6 +37,18 @@ dotnet build -c Release
 dotnet test
 ```
 
+## Running the API locally
+
+```sh
+dotnet run --project src/Khyout.Api
+```
+
+- Development defaults: SQLite (`khyout.dev.db`, created automatically via EnsureCreated) and a dev JWT signing key.
+- OTP codes are delivered by `LoggingSmsSender` in development — the 6-digit code appears in the console log.
+- Swagger UI (Development only): `http://localhost:<port>/swagger`.
+- For anything beyond local development, set `Auth:Jwt:SigningKey` and `ConnectionStrings:Postgres` (env or appsettings).
+- Background workers (quote/RFQ expiry, outbox dispatcher) respect `BackgroundJobs:Enabled` (default on).
+
 ## Database
 
 Provider selection is in `src/Khyout.Infrastructure/DependencyInjection.cs`:
@@ -72,5 +84,5 @@ is promoted to `Admin` on startup.
 |---|---|---|
 | 1 | Architecture & technical specification | done |
 | 2 | Domain model, EF Core configuration, migrations, DDL | done |
-| 3 | Application layer (CQRS) & REST API | next |
-| 4 | Telegram integration, offline-first PWA, deployment | planned |
+| 3 | Application layer (CQRS), REST API, background workers | done |
+| 4 | Telegram integration, offline-first PWA, deployment | next |

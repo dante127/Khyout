@@ -105,4 +105,75 @@ public class Product
 
         return Math.Abs(Composition.Sum(c => c.Percentage) - 100m) <= CompositionSumTolerance;
     }
+
+    public void UpdateDetails(
+        string title,
+        string? description,
+        decimal moq,
+        UnitOfMeasure unitOfMeasure,
+        decimal? indicativePrice,
+        string? currency,
+        DateTimeOffset now)
+    {
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            throw new DomainRuleException("product_title_required", "Product title is required.");
+        }
+
+        if (moq <= 0)
+        {
+            throw new DomainRuleException("product_moq_invalid", "Minimum order quantity must be greater than zero.");
+        }
+
+        if (indicativePrice is <= 0)
+        {
+            throw new DomainRuleException("product_price_invalid", "Indicative price must be greater than zero when provided.");
+        }
+
+        if (indicativePrice is not null && string.IsNullOrWhiteSpace(currency))
+        {
+            throw new DomainRuleException("product_currency_required", "Currency is required when a price is provided.");
+        }
+
+        Title = title.Trim();
+        Description = description;
+        Moq = moq;
+        UnitOfMeasure = unitOfMeasure;
+        IndicativePrice = indicativePrice;
+        Currency = currency?.Trim().ToUpperInvariant();
+        UpdatedAt = now;
+    }
+
+    public void SetAttributes(FabricAttributes attributes, DateTimeOffset now)
+    {
+        Attributes = attributes;
+        UpdatedAt = now;
+    }
+
+    public void ReplaceComposition(IEnumerable<(FiberType Fiber, decimal Percentage)> fibers, DateTimeOffset now)
+    {
+        Composition.Clear();
+        foreach (var (fiber, percentage) in fibers)
+        {
+            Composition.Add(FabricComposition.Create(Id, fiber, percentage));
+        }
+
+        UpdatedAt = now;
+    }
+
+    public void ChangeStatus(ProductStatus status, DateTimeOffset now)
+    {
+        if (status == ProductStatus.Active)
+        {
+            if (Attributes is null)
+            {
+                throw new DomainRuleException("product_attributes_required", "Technical attributes are required before publishing.");
+            }
+
+            EnsureCompositionIsValid();
+        }
+
+        Status = status;
+        UpdatedAt = now;
+    }
 }
