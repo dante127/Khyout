@@ -1,0 +1,183 @@
+%% Khyout B2B Marketplace - Phase 1 deliverable
+%% Complete Database ERD (keys, relationships, indexes)
+%% Index details are listed as comments below the entity definitions.
+erDiagram
+  COMPANIES |o--o{ USERS : "employs"
+  USERS ||--o{ REFRESH_TOKENS : "owns"
+  USERS |o--o{ COMPANIES : "verifies (admin)"
+  COMPANIES ||--o{ PRODUCTS : "supplies (seller)"
+  CATEGORIES ||--o{ CATEGORIES : "parent of"
+  CATEGORIES ||--o{ PRODUCTS : "classifies"
+  PRODUCTS ||--|| FABRIC_ATTRIBUTES : "has tech specs"
+  PRODUCTS ||--|{ FABRIC_COMPOSITION : "composed of"
+  PRODUCTS ||--o{ PRODUCT_IMAGES : "pictured by"
+  COMPANIES ||--o{ RFQ_REQUESTS : "issues (buyer)"
+  CATEGORIES ||--o{ RFQ_REQUESTS : "scopes"
+  RFQ_REQUESTS ||--o{ RFQ_QUOTATIONS : "receives bids"
+  COMPANIES ||--o{ RFQ_QUOTATIONS : "bids (supplier)"
+  RFQ_REQUESTS |o--o| RFQ_QUOTATIONS : "awards"
+  COMPANIES ||--o{ SAMPLE_REQUESTS : "requests (buyer)"
+  COMPANIES ||--o{ SAMPLE_REQUESTS : "fulfills (supplier)"
+  PRODUCTS ||--o{ SAMPLE_REQUESTS : "sampled via"
+  RFQ_QUOTATIONS |o--o{ SAMPLE_REQUESTS : "referenced by"
+
+  USERS {
+    uuid Id PK
+    varchar PhoneNumber UK "E.164 normalized - unique login"
+    varchar FullName
+    varchar Role "Buyer / Supplier / Admin"
+    uuid CompanyId FK "nullable for platform Admin"
+    bool IsActive
+    timestamptz CreatedAt
+    timestamptz UpdatedAt
+  }
+  REFRESH_TOKENS {
+    uuid Id PK
+    uuid UserId FK
+    varchar TokenHash UK "SHA-256, rotated on refresh"
+    timestamptz ExpiresAt
+    timestamptz RevokedAt
+    uuid ReplacedByTokenId FK "rotation chain"
+    timestamptz CreatedAt
+  }
+  OTP_CODES {
+    uuid Id PK
+    varchar PhoneNumber "pre-registration, no FK"
+    varchar Purpose "Login / Onboarding"
+    varchar CodeHash "never store plaintext"
+    smallint AttemptsMade
+    timestamptz ExpiresAt
+    timestamptz ConsumedAt
+    timestamptz CreatedAt
+  }
+  COMPANIES {
+    uuid Id PK
+    varchar Name
+    varchar Type "Buyer / Supplier"
+    varchar City "filter dimension"
+    text Address
+    text Bio
+    varchar VerificationStatus "Pending / Verified / Rejected"
+    timestamptz VerifiedAt
+    uuid VerifiedByUserId FK "nullable"
+    varchar LogoPath "nullable"
+    timestamptz CreatedAt
+    timestamptz UpdatedAt
+  }
+  CATEGORIES {
+    uuid Id PK
+    varchar Slug UK
+    varchar NameAr
+    varchar NameEn
+    uuid ParentId FK "nullable - tree"
+    int SortOrder
+    bool IsActive
+  }
+  PRODUCTS {
+    uuid Id PK
+    uuid SupplierCompanyId FK
+    uuid CategoryId FK
+    varchar Title
+    text Description
+    numeric MOQ "minimum order quantity"
+    varchar UnitOfMeasure "Meter / Kg / Roll / Yard"
+    numeric IndicativePrice "nullable - quotes bind"
+    varchar Currency "nullable - USD default"
+    varchar Status "Draft / Active / Archived"
+    timestamptz CreatedAt
+    timestamptz UpdatedAt
+  }
+  FABRIC_ATTRIBUTES {
+    uuid Id PK
+    uuid ProductId FK "unique - 1:1 with product"
+    int Gsm "grams per square meter"
+    int GsmTolerancePct "e.g. 5 means +/-5 percent"
+    varchar WeaveStructure "Plain / Twill / Satin / Knit / Denim"
+    int WidthCm
+    varchar ColorFamily "optional"
+    int WeightPerMeterG "optional"
+    text CareNotes "optional"
+  }
+  FABRIC_COMPOSITION {
+    uuid Id PK
+    uuid ProductId FK
+    varchar FiberType "Cotton / Lycra / Viscose / Polyester"
+    numeric Percentage "0-100, per product sums to 100"
+  }
+  PRODUCT_IMAGES {
+    uuid Id PK
+    uuid ProductId FK
+    varchar StoragePath
+    varchar ContentHash UK "dedupe"
+    int WidthPx
+    int HeightPx
+    int SizeBytes "target 150KB max"
+    smallint SortOrder
+  }
+  RFQ_REQUESTS {
+    uuid Id PK
+    uuid BuyerCompanyId FK
+    uuid CategoryId FK
+    varchar Title
+    text Description
+    numeric QuantityNeeded
+    varchar UnitOfMeasure "Meter / Kg / Roll / Yard"
+    date TargetDeliveryDate
+    timestamptz ClosingDate "no new bids after"
+    varchar Status "Open / Awarded / Cancelled / Expired"
+    uuid AcceptedQuotationId FK "nullable - set on award"
+    timestamptz CreatedAt
+    timestamptz UpdatedAt
+  }
+  RFQ_QUOTATIONS {
+    uuid Id PK
+    uuid RfqRequestId FK
+    uuid SupplierCompanyId FK
+    numeric UnitPrice "hidden from competitors"
+    varchar Currency "USD typical"
+    timestamptz ValidUntil "REQUIRED - must be future"
+    int LeadTimeDays
+    text Note
+    varchar Status "Submitted / Accepted / Rejected / Expired / Withdrawn"
+    timestamptz CreatedAt
+    timestamptz UpdatedAt
+  }
+  SAMPLE_REQUESTS {
+    uuid Id PK
+    uuid BuyerCompanyId FK
+    uuid SupplierCompanyId FK
+    uuid ProductId FK
+    uuid RfqQuotationId FK "nullable"
+    varchar Status "Requested / Approved / Shipped / Received / Rejected"
+    numeric Quantity
+    varchar DeliveryCity
+    text Note
+    timestamptz CreatedAt
+    timestamptz UpdatedAt
+  }
+  OUTBOX_MESSAGES {
+    uuid Id PK
+    varchar Type "e.g. RfqCreated, QuotationSubmitted, QuotationAccepted"
+    jsonb Payload "render data for message"
+    varchar TargetRef "user or company id"
+    smallint Attempts
+    timestamptz NextAttemptAt
+    varchar Status "Pending / Sent / Failed"
+    text LastError
+    timestamptz CreatedAt
+    timestamptz SentAt
+  }
+%% INDEXES AND CONSTRAINTS
+%% users: UQ phone_number; IX company_id; IX role
+%% refresh_tokens: UQ token_hash; IX user_id; IX expires_at
+%% otp_codes: IX (phone_number, purpose, expires_at); IX expires_at (cleanup)
+%% companies: IX city; IX verification_status; IX name
+%% categories: UQ slug; IX (parent_id, sort_order)
+%% products: IX supplier_company_id; IX (category_id, status, created_at DESC); IX moq
+%% fabric_attributes: UQ product_id; IX gsm; IX weave_structure
+%% fabric_composition: UQ (product_id, fiber_type); IX (fiber_type, percentage)
+%% product_images: IX (product_id, sort_order)
+%% rfq_requests: IX (buyer_company_id, created_at DESC); IX (category_id, status); IX (status, closing_date)
+%% rfq_quotations: UQ (rfq_request_id, supplier_company_id); IX (rfq_request_id, status); IX (supplier_company_id, created_at DESC); IX (valid_until, status)
+%% sample_requests: IX (buyer_company_id, created_at DESC); IX (supplier_company_id, status)
+%% outbox_messages: IX (status, next_attempt_at); IX created_at

@@ -1,0 +1,28 @@
+## .NET build output
+bin/
+obj/
+artifacts/
+*.user
+*.suo
+.vs/
+.idea/
+*.DotSettings.user
+
+## Local databases and secrets
+*.db
+*.db-shm
+*.db-wal
+.env
+appsettings.Local.json
+
+## Logs
+*.log
+logs/
+
+## OS junk
+Thumbs.db
+.DS_Store
+
+## Node (client — later phases)
+node_modules/
+dist/

@@ -1,0 +1,39 @@
+%% Khyout B2B Marketplace - Phase 1 deliverable
+%% System Architecture (High-Level Overview)
+%% Render with: mermaid.live | VS Code "Markdown Preview Mermaid Support" | mmdc
+flowchart LR
+  subgraph CLIENT["Client - PWA (mobile-first, offline-first)"]
+    direction TB
+    UI["React + Tailwind UI<br/>Arabic RTL / English"]
+    SW["Service Worker (Workbox)<br/>app shell + runtime caching"]
+    IDB[("IndexedDB<br/>catalog cache + mutation outbox")]
+    UI <--> SW
+    SW <--> IDB
+  end
+  subgraph EDGE["Edge"]
+    NGX["Nginx<br/>TLS, static hosting, reverse proxy"]
+  end
+  subgraph APP["Application - Docker Compose on one VPS"]
+    direction TB
+    API["ASP.NET Core 10 Web API<br/>REST /api/v1 - JWT + OTP auth"]
+    JOBS["Background Workers (IHostedService)<br/>quotation expiry, outbox dispatcher, media"]
+  end
+  subgraph DATA["Data"]
+    PG[("PostgreSQL")]
+    MEDIA[("Media volume<br/>WebP images under 150KB")]
+  end
+  subgraph EXT["External services"]
+    TG["Telegram Bot API"]
+    SMS["SMS / OTP gateway"]
+    TUSER["Supplier / Buyer<br/>Telegram app"]
+  end
+  UI -- "HTTPS / JSON" --> NGX
+  NGX --> API
+  API --> PG
+  JOBS --> PG
+  API --> MEDIA
+  JOBS --> MEDIA
+  API --> SMS
+  JOBS --> TG
+  TG -. "RFQ and bid alerts (deep links)" .-> TUSER
+  TUSER -. "opens the app" .-> UI
