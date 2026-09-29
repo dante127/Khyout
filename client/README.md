@@ -73,5 +73,8 @@ Copy `.env.example` to `.env.local` to override. `.env.local` is git-ignored.
 
 - **4b-1 (this milestone):** scaffold, app shell, auth flow, API layer with
   refresh rotation, offline queue skeleton, test suite.
-- **4b-2 (next):** catalog / RFQ / samples screens, offline flush + Workbox
-  background sync, image handling.
+- **4b-2a (this milestone):** catalog browse with filters + pagination, product
+  detail (specs, composition, gallery), owner image-upload UI, typed catalog and
+  RFQ API modules.
+- **4b-2b (next):** RFQ create / mine / detail + quotation screens, samples
+  screens, offline flush + Workbox background sync.

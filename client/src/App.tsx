@@ -5,7 +5,9 @@ import AppShell from './app/AppShell';
 import LoginPage from './pages/LoginPage';
 import HomePage from './pages/HomePage';
 import CatalogPage from './pages/CatalogPage';
+import ProductDetailPage from './pages/ProductDetailPage';
 import RfqsPage from './pages/RfqsPage';
+import RfqCreatePage from './pages/RfqCreatePage';
 import SamplesPage from './pages/SamplesPage';
 import ProfilePage from './pages/ProfilePage';
 
@@ -29,7 +31,9 @@ export default function App() {
           >
             <Route path="/" element={<HomePage />} />
             <Route path="/catalog" element={<CatalogPage />} />
+            <Route path="/catalog/:productId" element={<ProductDetailPage />} />
             <Route path="/rfqs" element={<RfqsPage />} />
+            <Route path="/rfqs/new" element={<RfqCreatePage />} />
             <Route path="/samples" element={<SamplesPage />} />
             <Route path="/profile" element={<ProfilePage />} />
           </Route>

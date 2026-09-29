@@ -105,4 +105,4 @@ after a normal OTP login is promoted to `Admin`.
 | 1 | Architecture & technical specification | done |
 | 2 | Domain model, EF Core configuration, migrations, DDL | done |
 | 3 | Application layer (CQRS), REST API, background workers | done |
-| 4 | Telegram integration, offline-first PWA, deployment | in progress — 4a done, 4b-1 (client scaffold) done |
+| 4 | Telegram integration, offline-first PWA, deployment | in progress — 4a done; 4b-1 scaffold + 4b-2a catalog screens done |
