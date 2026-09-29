@@ -8,6 +8,7 @@ import CatalogPage from './pages/CatalogPage';
 import ProductDetailPage from './pages/ProductDetailPage';
 import RfqsPage from './pages/RfqsPage';
 import RfqCreatePage from './pages/RfqCreatePage';
+import RfqDetailPage from './pages/RfqDetailPage';
 import SamplesPage from './pages/SamplesPage';
 import ProfilePage from './pages/ProfilePage';
 
@@ -34,6 +35,7 @@ export default function App() {
             <Route path="/catalog/:productId" element={<ProductDetailPage />} />
             <Route path="/rfqs" element={<RfqsPage />} />
             <Route path="/rfqs/new" element={<RfqCreatePage />} />
+            <Route path="/rfqs/:rfqId" element={<RfqDetailPage />} />
             <Route path="/samples" element={<SamplesPage />} />
             <Route path="/profile" element={<ProfilePage />} />
           </Route>

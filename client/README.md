@@ -73,8 +73,11 @@ Copy `.env.example` to `.env.local` to override. `.env.local` is git-ignored.
 
 - **4b-1 (this milestone):** scaffold, app shell, auth flow, API layer with
   refresh rotation, offline queue skeleton, test suite.
-- **4b-2a (this milestone):** catalog browse with filters + pagination, product
-  detail (specs, composition, gallery), owner image-upload UI, typed catalog and
-  RFQ API modules.
-- **4b-2b (next):** RFQ create / mine / detail + quotation screens, samples
-  screens, offline flush + Workbox background sync.
+- **4b-2a:** catalog browse with filters + pagination, product detail (specs,
+  composition, gallery), owner image-upload UI, typed catalog API modules.
+- **4b-2b (this milestone):** RFQ create form (prefilled from products), buyer
+  my-RFQs list with status filters, role-aware RFQ detail with the full
+  quotation flow (blind bids: buyer sees all bids with accept/reject; supplier
+  submits, tracks and withdraws own bid), quotation action API modules.
+- **4b-2c (next):** samples screens + typed module, offline flush + Workbox
+  background sync.

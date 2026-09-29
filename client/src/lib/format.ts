@@ -45,8 +45,20 @@ export function weaveLabel(weave: string | null | undefined): string {
   return weaveLabels[weave] ?? weave;
 }
 
+const quotationStatusLabels: Record<string, string> = {
+  Submitted: 'مقدَّم',
+  Accepted: 'مقبول',
+  Rejected: 'مرفوض',
+  Expired: 'منتهي',
+  Withdrawn: 'مسحوب',
+};
+
 export function rfqStatusLabel(status: string): string {
   return rfqStatusLabels[status] ?? status;
+}
+
+export function quotationStatusLabel(status: string): string {
+  return quotationStatusLabels[status] ?? status;
 }
 
 export function formatNumber(value: number, maxFractionDigits = 2): string {

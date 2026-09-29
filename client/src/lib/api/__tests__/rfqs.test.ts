@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { closeRfq, createRfq, getMyRfqs, submitQuotation } from '../rfqs';
+import { acceptQuotation, closeRfq, createRfq, getMyRfqs, rejectQuotation, submitQuotation, withdrawQuotation } from '../rfqs';
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -88,5 +88,29 @@ describe('rfqs api', () => {
     await expect(closeRfq('rfq-1')).resolves.toBeNull();
     expect(String(fetchMock.mock.calls[0][0])).toBe('/api/v1/rfqs/rfq-1/close');
     expect(fetchMock.mock.calls[0][1]?.method).toBe('POST');
+  });
+
+  it('acceptQuotation posts to the accept path and returns the updated rfq', async () => {
+    const fetchMock = vi.fn((_input: unknown, _init?: RequestInit) =>
+      Promise.resolve(jsonResponse(ok({ id: 'rfq-1', status: 'Awarded' }))),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const updated = await acceptQuotation('q-1');
+    expect(updated.id).toBe('rfq-1');
+    expect(String(fetchMock.mock.calls[0][0])).toBe('/api/v1/quotations/q-1/accept');
+    expect(fetchMock.mock.calls[0][1]?.method).toBe('POST');
+  });
+
+  it('rejectQuotation and withdrawQuotation hit their paths', async () => {
+    const fetchMock = vi.fn((_input: unknown, _init?: RequestInit) =>
+      Promise.resolve(jsonResponse({ success: true, data: null, error: null })),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(rejectQuotation('q-1')).resolves.toBeNull();
+    await expect(withdrawQuotation('q-2')).resolves.toBeNull();
+    expect(String(fetchMock.mock.calls[0][0])).toBe('/api/v1/quotations/q-1/reject');
+    expect(String(fetchMock.mock.calls[1][0])).toBe('/api/v1/quotations/q-2/withdraw');
   });
 });

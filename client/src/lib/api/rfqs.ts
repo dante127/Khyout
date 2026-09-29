@@ -130,3 +130,18 @@ export function getRfqBids(
   const serialized = query.toString();
   return request<Paged<RfqBid>>(`/api/v1/rfqs/${rfqId}/quotations${serialized ? `?${serialized}` : ''}`);
 }
+
+/** Buyer-owner action: awards the RFQ to a bid; returns the updated RFQ detail. */
+export function acceptQuotation(quotationId: string): Promise<RfqDetail> {
+  return request<RfqDetail>(`/api/v1/quotations/${quotationId}/accept`, { method: 'POST' });
+}
+
+/** Buyer-owner action: rejects a bid. */
+export function rejectQuotation(quotationId: string): Promise<null> {
+  return request<null>(`/api/v1/quotations/${quotationId}/reject`, { method: 'POST' });
+}
+
+/** Supplier action: withdraws the supplier's own submitted bid. */
+export function withdrawQuotation(quotationId: string): Promise<null> {
+  return request<null>(`/api/v1/quotations/${quotationId}/withdraw`, { method: 'POST' });
+}
